@@ -1,0 +1,30 @@
+# Dependency directories
+node_modules/
+
+# Coverage output
+coverage/
+
+# Environment files
+.env
+.env.local
+.env.test
+.env.production
+
+# CointMU local session & network state (encrypted key / local-only config)
+.cmu-session
+.cmu-session.*.tmp
+.cmu-session.bak-*
+.cmu-networks.json
+.cmu-wallets.json
+
+# Compiled artifacts
+artifacts/
+dist/
+
+# Local devnet deployment records (other networks' records are meant to be committed)
+deployments/local/
+
+# Logs
+logs
+*.log
+npm-debug.log*

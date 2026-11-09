@@ -1,0 +1,12 @@
+{
+  "format": 1,
+  "contract": "TicketNFT",
+  "network": "mainnet",
+  "chainId": 1912,
+  "address": "0xdb290DB2aB660936b52487938254edBb975bee90",
+  "deployer": "0x3c9b08645c616ae3966252f276AA23825b3dCD85",
+  "txHash": "0x1c45fe4675116dea0f101a02e2509767c3374269a80c14b2023ea8dba660ea36",
+  "blockNumber": 388487,
+  "timestamp": "2026-11-09T06:03:21.000Z",
+  "codeHash": "0x9166e2d0ad42126c762b810f936e0ee2152f90952d55dc9c59fb406359f6df10"
+}
