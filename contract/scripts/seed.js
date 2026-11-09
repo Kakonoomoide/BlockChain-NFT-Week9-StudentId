@@ -5,7 +5,7 @@ const path = require("node:path");
 // ===== KONFIGURASI (edit bagian ini saja) =====
 const RPC_URL = "http://10.64.24.101:8585"; // server: 'http://10.64.24.101:8585'
 const CHAIN_ID = 1912;
-const CONTRACT_ADDRESS = "0xdb290DB2aB660936b52487938254edBb975bee90"; // ubah dengan contarct address yang telah di deploy
+const CONTRACT_ADDRESS = "0xISI_ALAMAT_CONTRACT_DI_SINI"; // ubah dengan contarct address yang telah di deploy
 const ABI_PATH = path.resolve("artifacts", "TicketNFT.json");
 
 // [penerima, nama event, kursi]
