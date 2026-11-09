@@ -30,6 +30,47 @@ const provider = new ethers.JsonRpcProvider(RPC_URL, CHAIN_ID, {
 const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
 const nft = new ethers.Contract(CONTRACT_ADDRESS, abi, wallet);
 
+async function getDashboardData() {
+  const [name, symbol, organizer, maxSupply, nextId] = await Promise.all([
+    nft.name(),
+    nft.symbol(),
+    nft.organizer(),
+    nft.maxSupply(),
+    nft.nextId(),
+  ]);
+
+  const total = Number(nextId);
+
+  const tickets = await Promise.all(
+    Array.from({ length: total }, async (_, id) => {
+      const [t, owner] = await Promise.all([
+        nft.getTicket(id),
+        nft.ownerOf(id),
+      ]);
+
+      return {
+        id,
+        event: t.eventName,
+        seat: t.seat,
+        used: t.used,
+        owner,
+      };
+    }),
+  );
+
+  return {
+    info: {
+      name,
+      symbol,
+      organizer,
+      maxSupply: Number(maxSupply),
+      total,
+      me: wallet.address,
+    },
+    tickets,
+  };
+}
+
 const app = express();
 app.set("view engine", "ejs");
 app.use(express.urlencoded({ extended: false }));
@@ -49,36 +90,14 @@ const act = (fn) => async (req, res) => {
 // Beranda: info contract + daftar tiket
 app.get("/", async (req, res) => {
   try {
-    const [name, symbol, organizer, maxSupply, nextId] = await Promise.all([
-      nft.name(),
-      nft.symbol(),
-      nft.organizer(),
-      nft.maxSupply(),
-      nft.nextId(),
-    ]);
-    const total = Number(nextId);
-    const tickets = await Promise.all(
-      Array.from({ length: total }, async (_, id) => {
-        const [t, owner] = await Promise.all([
-          nft.getTicket(id),
-          nft.ownerOf(id),
-        ]);
-        return { id, event: t.eventName, seat: t.seat, used: t.used, owner };
-      }),
-    );
+    const data = await getDashboardData();
+
     res.render("index", {
-      info: {
-        name,
-        symbol,
-        organizer,
-        maxSupply: Number(maxSupply),
-        total,
-        me: wallet.address,
-      },
-      tickets,
+      ...data,
       ok: req.query.ok || null,
       err: req.query.err || null,
-      verified: null,
+      query: null,
+      verification: null,
     });
   } catch (e) {
     res
@@ -89,26 +108,48 @@ app.get("/", async (req, res) => {
 
 // Verifikasi keaslian tiket
 app.get("/verify", async (req, res) => {
-  const id = Number(req.query.id);
-  let verified;
   try {
-    const [valid, t, owner] = await Promise.all([
-      nft.isValid(id),
-      nft.getTicket(id),
-      nft.ownerOf(id),
-    ]);
-    verified = {
-      id,
-      found: true,
-      valid,
-      event: t.eventName,
-      seat: t.seat,
-      owner,
-    };
-  } catch {
-    verified = { id, found: false };
+    const data = await getDashboardData();
+    const id = Number(req.query.id);
+
+    let verification = null;
+    let err = null;
+
+    if (!Number.isSafeInteger(id) || id < 0) {
+      err = "ID tiket tidak valid";
+    } else if (id >= data.info.total) {
+      verification = {
+        id,
+        valid: false,
+      };
+    } else {
+      const [ticket, owner] = await Promise.all([
+        nft.getTicket(id),
+        nft.ownerOf(id),
+      ]);
+
+      verification = {
+        id,
+        valid: true,
+        event: ticket.eventName,
+        seat: ticket.seat,
+        owner,
+        used: ticket.used,
+      };
+    }
+
+    res.render("index", {
+      ...data,
+      query: req.query.id,
+      verification,
+      ok: null,
+      err,
+    });
+  } catch (e) {
+    res
+      .status(500)
+      .send("Gagal melakukan verifikasi: " + (e.shortMessage || e.message));
   }
-  res.redirect(`/?v=${encodeURIComponent(JSON.stringify(verified))}`);
 });
 
 app.post(

@@ -1,86 +1,645 @@
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>TicketNFT dApp</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TicketNFT - Admin Dashboard</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'ui-sans-serif', 'system-ui']
+          }
+        }
+      }
+    }
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
   <style>
-    body { font-family: system-ui, sans-serif; max-width: 860px; margin: 2rem auto; padding: 0 1rem; color: #222; }
-    h1 { margin-bottom: .2rem; } .sub { color: #666; margin-top: 0; font-size: .9rem; word-break: break-all; }
-    .card { border: 1px solid #ddd; border-radius: 8px; padding: 1rem; margin: 1rem 0; }
-    form { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
-    input { padding: .45rem; border: 1px solid #bbb; border-radius: 6px; flex: 1; min-width: 120px; }
-    button { padding: .45rem .9rem; border: 0; border-radius: 6px; background: #2b59c3; color: #fff; cursor: pointer; }
-    table { width: 100%; border-collapse: collapse; font-size: .9rem; }
-    th, td { text-align: left; padding: .4rem; border-bottom: 1px solid #eee; word-break: break-all; }
-    .ok { background: #e6f6ea; border: 1px solid #9ad3a8; padding: .6rem; border-radius: 6px; }
-    .err { background: #fdeaea; border: 1px solid #e0a0a0; padding: .6rem; border-radius: 6px; }
-    .used { color: #b00020; } .valid { color: #1b7f3b; }
+    body { font-family: Inter, sans-serif; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .nav-tab.active {
+      background: #eff6ff;
+      color: #2563eb;
+      border-color: #bfdbfe;
+    }
+    .nav-tab { transition: all .2s ease; }
+    .table-scroll { overflow-x: auto; }
   </style>
 </head>
-<body>
-  <h1><%= info.name %> (<%= info.symbol %>)</h1>
-  <p class="sub">Panitia: <%= info.organizer %><br>Wallet server: <%= info.me %><br>
-    Terbit: <%= info.total %> / <%= info.maxSupply %></p>
 
-  <% if (ok) { %><p class="ok"><%= ok %></p><% } %>
-  <% if (err) { %><p class="err"><%= err %></p><% } %>
+<body class="bg-slate-50 text-slate-800 min-h-screen">
 
-  <div class="card">
-    <h3>Cetak tiket (mint)</h3>
-    <form method="post" action="/mint">
-      <input name="to" placeholder="Alamat penerima 0x..." required>
-      <input name="eventName" placeholder="Nama event" required>
-      <input name="seat" placeholder="Kursi" required>
-      <button>Mint</button>
-    </form>
-  </div>
+<%
+  const ticketList = typeof tickets !== 'undefined' ? tickets : [];
+  const totalTickets = Number(info.total || 0);
+  const maxSupply = Number(info.maxSupply || 0);
+  const usedTickets = ticketList.filter(t => t.used).length;
+  const validTickets = ticketList.filter(t => !t.used).length;
+  const remainingSupply = Math.max(maxSupply - totalTickets, 0);
 
-  <div class="card">
-    <h3>Verifikasi tiket</h3>
-    <form method="get" action="/verify">
-      <input name="id" type="number" min="0" placeholder="ID tiket" required>
-      <button>Cek</button>
-    </form>
-    <% if (typeof query !== 'undefined' && query) { %><% } %>
-  </div>
+  const shortAddress = (address) => {
+    if (!address) return '-';
+    return address.length > 15
+      ? address.slice(0, 8) + '...' + address.slice(-6)
+      : address;
+  };
 
-  <div class="card">
-    <h3>Daftar tiket</h3>
-    <% if (tickets.length === 0) { %>
-      <p>Belum ada tiket.</p>
-    <% } else { %>
-      <table>
-        <tr><th>ID</th><th>Event</th><th>Kursi</th><th>Pemilik</th><th>Status</th><th>Aksi</th></tr>
-        <% tickets.forEach(t => { %>
-          <tr>
-            <td><%= t.id %></td>
-            <td><%= t.event %></td>
-            <td><%= t.seat %></td>
-            <td><%= t.owner %></td>
-            <td class="<%= t.used ? 'used' : 'valid' %>"><%= t.used ? 'Terpakai' : 'Valid' %></td>
-            <td>
-              <% if (!t.used) { %>
-                <form method="post" action="/checkin" style="display:inline">
-                  <input type="hidden" name="id" value="<%= t.id %>">
-                  <button>Check-in</button>
-                </form>
+  const formatDate = (value) => {
+    if (!value) return '-';
+    return value;
+  };
+%>
+
+<div class="min-h-screen flex flex-col lg:flex-row">
+
+  <!-- SIDEBAR -->
+  <aside class="w-full lg:w-64 bg-white border-r border-slate-200 lg:min-h-screen flex flex-col">
+
+    <div class="p-6 border-b border-slate-100">
+      <div class="flex items-center gap-3">
+        <div class="w-11 h-11 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xl font-bold">
+          T
+        </div>
+        <div>
+          <h1 class="font-extrabold text-xl tracking-tight">TicketNFT</h1>
+          <p class="text-xs text-slate-400">Management Dashboard</p>
+        </div>
+      </div>
+    </div>
+
+    <nav class="p-4 space-y-2 flex-1">
+
+      <p class="text-xs font-bold uppercase tracking-wider text-slate-400 px-3 mb-3">
+        Main Menu
+      </p>
+
+      <button onclick="switchTab('dashboard')" data-tab="dashboard"
+        class="nav-tab active w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50">
+        <span>▦</span> Dashboard
+      </button>
+
+      <button onclick="switchTab('mint')" data-tab="mint"
+        class="nav-tab w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50">
+        <span>＋</span> Mint Ticket
+      </button>
+
+      <button onclick="switchTab('verify')" data-tab="verify"
+        class="nav-tab w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50">
+        <span>⌕</span> Verify Ticket
+      </button>
+
+      <button onclick="switchTab('tickets')" data-tab="tickets"
+        class="nav-tab w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50">
+        <span>▤</span> Ticket List
+      </button>
+
+      <button onclick="switchTab('transfer')" data-tab="transfer"
+        class="nav-tab w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50">
+        <span>⇄</span> Transfer Ticket
+      </button>
+
+    </nav>
+
+    <div class="p-4 border-t border-slate-100">
+      <div class="bg-slate-50 rounded-xl p-4">
+        <p class="text-xs text-slate-400 mb-1">Server Wallet</p>
+        <p class="text-xs font-semibold font-mono break-all text-slate-700">
+          <%= info.me %>
+        </p>
+        <div class="flex items-center gap-2 mt-3">
+          <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+          <span class="text-xs text-green-600 font-semibold">Blockchain Connected</span>
+        </div>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="flex-1 min-w-0">
+
+    <!-- HEADER -->
+    <header class="bg-white border-b border-slate-200 px-6 lg:px-10 py-5">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <p class="text-xs text-slate-400 font-medium">TicketNFT / Management</p>
+          <h2 id="page-title" class="text-2xl font-bold mt-1">Dashboard</h2>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <div class="text-right">
+            <p class="text-sm font-semibold">Administrator</p>
+            <p class="text-xs text-slate-400">Event Organizer</p>
+          </div>
+          <div class="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
+            A
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="p-5 lg:p-10 max-w-7xl mx-auto">
+
+      <!-- FLASH MESSAGE -->
+      <% if (typeof ok !== 'undefined' && ok) { %>
+        <div class="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl text-green-700 text-sm">
+          ✓ <%= ok %>
+        </div>
+      <% } %>
+
+      <% if (typeof err !== 'undefined' && err) { %>
+        <div class="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
+          ✕ <%= err %>
+        </div>
+      <% } %>
+
+
+      <!-- ================= DASHBOARD ================= -->
+      <section id="tab-dashboard" class="tab-content active">
+
+        <div class="mb-8">
+          <h3 class="text-xl font-bold">Overview</h3>
+          <p class="text-sm text-slate-500 mt-1">
+            Ringkasan aktivitas penerbitan tiket NFT.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+
+          <div class="bg-white border border-slate-200 rounded-2xl p-6">
+            <div class="flex justify-between items-start">
+              <div>
+                <p class="text-sm text-slate-500">Total Tickets</p>
+                <h3 class="text-3xl font-bold mt-3"><%= totalTickets %></h3>
+              </div>
+              <div class="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl">▤</div>
+            </div>
+            <p class="text-xs text-slate-400 mt-4">Total NFT diterbitkan</p>
+          </div>
+
+          <div class="bg-white border border-slate-200 rounded-2xl p-6">
+            <div class="flex justify-between items-start">
+              <div>
+                <p class="text-sm text-slate-500">Valid Tickets</p>
+                <h3 class="text-3xl font-bold mt-3 text-green-600"><%= validTickets %></h3>
+              </div>
+              <div class="w-11 h-11 rounded-xl bg-green-50 text-green-600 flex items-center justify-center text-xl">✓</div>
+            </div>
+            <p class="text-xs text-slate-400 mt-4">Tiket belum check-in</p>
+          </div>
+
+          <div class="bg-white border border-slate-200 rounded-2xl p-6">
+            <div class="flex justify-between items-start">
+              <div>
+                <p class="text-sm text-slate-500">Used Tickets</p>
+                <h3 class="text-3xl font-bold mt-3 text-red-500"><%= usedTickets %></h3>
+              </div>
+              <div class="w-11 h-11 rounded-xl bg-red-50 text-red-500 flex items-center justify-center text-xl">✓</div>
+            </div>
+            <p class="text-xs text-slate-400 mt-4">Tiket sudah digunakan</p>
+          </div>
+
+          <div class="bg-white border border-slate-200 rounded-2xl p-6">
+            <div class="flex justify-between items-start">
+              <div>
+                <p class="text-sm text-slate-500">Remaining Supply</p>
+                <h3 class="text-3xl font-bold mt-3 text-purple-600"><%= remainingSupply %></h3>
+              </div>
+              <div class="w-11 h-11 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-xl">◈</div>
+            </div>
+            <p class="text-xs text-slate-400 mt-4">Sisa kapasitas minting</p>
+          </div>
+
+        </div>
+
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-5 mt-8">
+
+          <div class="xl:col-span-2 bg-white border border-slate-200 rounded-2xl p-6">
+            <h3 class="font-bold text-lg">Recent Tickets</h3>
+            <p class="text-sm text-slate-400 mt-1">Tiket yang terakhir tersedia pada daftar.</p>
+
+            <div class="table-scroll mt-5">
+              <table class="w-full text-sm text-left">
+                <thead>
+                  <tr class="text-xs text-slate-400 border-b border-slate-100">
+                    <th class="pb-3">ID</th>
+                    <th class="pb-3">Event</th>
+                    <th class="pb-3">Seat</th>
+                    <th class="pb-3">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% ticketList.slice(-5).reverse().forEach(t => { %>
+                    <tr class="border-b border-slate-50">
+                      <td class="py-4 font-semibold">#<%= t.id %></td>
+                      <td class="py-4"><%= t.event %></td>
+                      <td class="py-4"><%= t.seat %></td>
+                      <td class="py-4">
+                        <% if (t.used) { %>
+                          <span class="px-2 py-1 bg-red-50 text-red-600 rounded-lg text-xs font-semibold">Used</span>
+                        <% } else { %>
+                          <span class="px-2 py-1 bg-green-50 text-green-600 rounded-lg text-xs font-semibold">Valid</span>
+                        <% } %>
+                      </td>
+                    </tr>
+                  <% }) %>
+
+                  <% if (ticketList.length === 0) { %>
+                    <tr><td colspan="4" class="py-8 text-center text-slate-400">Belum ada tiket.</td></tr>
+                  <% } %>
+                </tbody>
+              </table>
+            </div>
+
+            <button onclick="switchTab('tickets')" class="text-sm font-semibold text-blue-600 mt-4 hover:underline">
+              Lihat semua tiket →
+            </button>
+          </div>
+
+          <div class="bg-white border border-slate-200 rounded-2xl p-6">
+            <h3 class="font-bold text-lg">Collection Info</h3>
+            <p class="text-sm text-slate-400 mt-1">Informasi smart contract.</p>
+
+            <div class="space-y-5 mt-6">
+              <div>
+                <p class="text-xs text-slate-400">Collection Name</p>
+                <p class="font-semibold mt-1"><%= info.name %></p>
+              </div>
+              <div>
+                <p class="text-xs text-slate-400">Symbol</p>
+                <p class="font-semibold mt-1"><%= info.symbol %></p>
+              </div>
+              <div>
+                <p class="text-xs text-slate-400">Organizer</p>
+                <p class="font-semibold mt-1 break-all"><%= info.organizer %></p>
+              </div>
+              <div>
+                <p class="text-xs text-slate-400">Total Supply</p>
+                <p class="font-semibold mt-1"><%= info.total %> / <%= info.maxSupply %></p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+
+      <!-- ================= MINT ================= -->
+      <section id="tab-mint" class="tab-content">
+
+        <div class="mb-8">
+          <h3 class="text-xl font-bold">Mint New Ticket</h3>
+          <p class="text-sm text-slate-500 mt-1">
+            Terbitkan NFT ticket baru ke alamat wallet penerima.
+          </p>
+        </div>
+
+        <div class="max-w-3xl bg-white border border-slate-200 rounded-2xl p-6 lg:p-8">
+
+          <div class="mb-6">
+            <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center text-2xl">＋</div>
+            <h3 class="font-bold text-lg mt-4">Ticket Information</h3>
+            <p class="text-sm text-slate-400">Lengkapi informasi tiket berikut.</p>
+          </div>
+
+          <form method="post" action="/mint" class="space-y-5">
+
+            <div>
+              <label class="block text-sm font-semibold mb-2">Recipient Wallet</label>
+              <input name="to" required placeholder="0x..."
+                class="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 font-mono text-sm">
+              <p class="text-xs text-slate-400 mt-2">Alamat wallet penerima NFT.</p>
+            </div>
+
+            <div>
+              <label class="block text-sm font-semibold mb-2">Event Name</label>
+              <input name="eventName" required placeholder="Contoh: Blockchain Conference 2026"
+                class="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
+            </div>
+
+            <div>
+              <label class="block text-sm font-semibold mb-2">Seat Number</label>
+              <input name="seat" required placeholder="Contoh: A-12"
+                class="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
+            </div>
+
+            <div class="bg-blue-50 border border-blue-100 rounded-xl p-4 text-sm text-blue-700">
+              <strong>Perhatian:</strong> Proses minting akan mengirim transaksi ke blockchain dan menggunakan wallet server.
+            </div>
+
+            <button type="submit"
+              class="w-full sm:w-auto px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition">
+              Mint NFT Ticket →
+            </button>
+
+          </form>
+        </div>
+      </section>
+
+
+      <!-- ================= VERIFY ================= -->
+      <section id="tab-verify" class="tab-content">
+
+        <div class="mb-8">
+          <h3 class="text-xl font-bold">Verify Ticket</h3>
+          <p class="text-sm text-slate-500 mt-1">
+            Periksa keaslian tiket dan status check-in melalui blockchain.
+          </p>
+        </div>
+
+        <div class="max-w-3xl bg-white border border-slate-200 rounded-2xl p-6 lg:p-8">
+
+          <div class="text-center mb-8">
+            <div class="w-16 h-16 mx-auto rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center text-3xl">
+              ⌕
+            </div>
+            <h3 class="text-lg font-bold mt-4">Ticket Verification</h3>
+            <p class="text-sm text-slate-400 mt-1">Masukkan ID tiket yang ingin diverifikasi.</p>
+          </div>
+
+          <form method="get" action="/verify#verify" class="flex flex-col sm:flex-row gap-3">
+            <input name="id" type="number" min="0" required placeholder="Masukkan Ticket ID"
+              value="<%= typeof query !== 'undefined' && query ? query : '' %>"
+              class="flex-1 px-4 py-3 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
+
+            <button type="submit"
+              class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl">
+              Verify Ticket
+            </button>
+          </form>
+
+          <% if (typeof verification !== 'undefined' && verification) { %>
+
+            <div class="mt-8 border border-slate-200 rounded-2xl overflow-hidden">
+
+              <% if (verification.valid) { %>
+                <div class="bg-green-50 p-5 border-b border-green-100">
+                  <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-xl">✓</div>
+                    <div>
+                      <h4 class="font-bold text-green-700">Ticket Verified</h4>
+                      <p class="text-sm text-green-600">Tiket ditemukan di blockchain.</p>
+                    </div>
+                  </div>
+                </div>
+              <% } else { %>
+                <div class="bg-red-50 p-5 border-b border-red-100">
+                  <h4 class="font-bold text-red-700">Invalid Ticket</h4>
+                  <p class="text-sm text-red-600">Tiket tidak ditemukan atau tidak valid.</p>
+                </div>
               <% } %>
-            </td>
-          </tr>
-        <% }) %>
-      </table>
-    <% } %>
-  </div>
 
-  <div class="card">
-    <h3>Transfer tiket</h3>
-    <form method="post" action="/transfer">
-      <input name="id" type="number" min="0" placeholder="ID tiket" required>
-      <input name="to" placeholder="Alamat tujuan 0x..." required>
-      <button>Transfer</button>
-    </form>
-    <p class="sub">Hanya berhasil untuk tiket yang dimiliki wallet server.</p>
-  </div>
+              <div class="p-5 space-y-4">
+
+                <div class="flex justify-between gap-4">
+                  <span class="text-sm text-slate-400">Ticket ID</span>
+                  <strong>#<%= verification.id ?? query %></strong>
+                </div>
+
+                <% if (verification.valid) { %>
+                  <div class="flex justify-between gap-4">
+                    <span class="text-sm text-slate-400">Event</span>
+                    <strong class="text-right"><%= verification.event %></strong>
+                  </div>
+
+                  <div class="flex justify-between gap-4">
+                    <span class="text-sm text-slate-400">Seat</span>
+                    <strong><%= verification.seat %></strong>
+                  </div>
+
+                  <div class="flex justify-between gap-4">
+                    <span class="text-sm text-slate-400">Owner</span>
+                    <span class="text-xs font-mono break-all text-right"><%= verification.owner %></span>
+                  </div>
+
+                  <div class="flex justify-between gap-4">
+                    <span class="text-sm text-slate-400">Check-in Status</span>
+                    <% if (verification.used) { %>
+                      <span class="text-red-600 font-semibold text-sm">Already Used</span>
+                    <% } else { %>
+                      <span class="text-green-600 font-semibold text-sm">Not Used</span>
+                    <% } %>
+                  </div>
+                <% } %>
+
+              </div>
+            </div>
+
+          <% } %>
+
+          <% if (typeof query !== 'undefined' && query && typeof verification === 'undefined' && typeof err === 'undefined') { %>
+            <div class="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-xl text-yellow-700 text-sm">
+              Belum ada data hasil verifikasi dari server.
+            </div>
+          <% } %>
+
+        </div>
+      </section>
+
+
+      <!-- ================= TICKETS ================= -->
+      <section id="tab-tickets" class="tab-content">
+
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+          <div>
+            <h3 class="text-xl font-bold">All Tickets</h3>
+            <p class="text-sm text-slate-500 mt-1">Kelola tiket NFT yang sudah diterbitkan.</p>
+          </div>
+
+          <button onclick="switchTab('mint')"
+            class="px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold">
+            + Mint New Ticket
+          </button>
+        </div>
+
+        <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+
+          <div class="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:justify-between gap-3">
+            <h3 class="font-bold">Ticket Collection</h3>
+            <span class="text-sm text-slate-400"><%= ticketList.length %> tickets</span>
+          </div>
+
+          <div class="table-scroll">
+            <table class="w-full text-sm text-left">
+              <thead class="bg-slate-50 text-xs text-slate-500 uppercase">
+                <tr>
+                  <th class="px-5 py-4">ID</th>
+                  <th class="px-5 py-4">Event</th>
+                  <th class="px-5 py-4">Seat</th>
+                  <th class="px-5 py-4">Owner</th>
+                  <th class="px-5 py-4">Status</th>
+                  <th class="px-5 py-4">Action</th>
+                </tr>
+              </thead>
+
+              <tbody class="divide-y divide-slate-100">
+
+                <% ticketList.forEach(t => { %>
+                  <tr class="hover:bg-slate-50">
+
+                    <td class="px-5 py-4 font-bold">#<%= t.id %></td>
+                    <td class="px-5 py-4 font-medium"><%= t.event %></td>
+                    <td class="px-5 py-4"><%= t.seat %></td>
+
+                    <td class="px-5 py-4 font-mono text-xs">
+                      <%= shortAddress(t.owner) %>
+                    </td>
+
+                    <td class="px-5 py-4">
+                      <% if (t.used) { %>
+                        <span class="px-3 py-1.5 bg-red-50 text-red-600 rounded-lg text-xs font-semibold">Used</span>
+                      <% } else { %>
+                        <span class="px-3 py-1.5 bg-green-50 text-green-600 rounded-lg text-xs font-semibold">Valid</span>
+                      <% } %>
+                    </td>
+
+                    <td class="px-5 py-4">
+                      <div class="flex items-center gap-2">
+
+                        <a href="/verify?id=<%= encodeURIComponent(t.id) %>#verify"
+   class="text-blue-600 hover:text-blue-800 font-semibold text-xs">
+  Verify
+</a>
+
+                        <% if (!t.used) { %>
+                          <form method="post" action="/checkin"
+                            onsubmit="return confirm('Check-in tiket ini?')">
+                            <input type="hidden" name="id" value="<%= t.id %>">
+                            <button type="submit"
+                              class="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-semibold">
+                              Check-in
+                            </button>
+                          </form>
+                        <% } %>
+
+                      </div>
+                    </td>
+
+                  </tr>
+                <% }) %>
+
+                <% if (ticketList.length === 0) { %>
+                  <tr>
+                    <td colspan="6" class="px-5 py-12 text-center text-slate-400">
+                      Belum ada tiket yang diterbitkan.
+                    </td>
+                  </tr>
+                <% } %>
+
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ================= TRANSFER ================= -->
+      <section id="tab-transfer" class="tab-content">
+
+        <div class="mb-8">
+          <h3 class="text-xl font-bold">Transfer Ticket</h3>
+          <p class="text-sm text-slate-500 mt-1">
+            Pindahkan kepemilikan tiket NFT ke wallet lain.
+          </p>
+        </div>
+
+        <div class="max-w-3xl bg-white border border-slate-200 rounded-2xl p-6 lg:p-8">
+
+          <div class="mb-6">
+            <div class="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-2xl">⇄</div>
+            <h3 class="font-bold text-lg mt-4">Transfer Information</h3>
+            <p class="text-sm text-slate-400 mt-1">Masukkan ID tiket dan alamat wallet tujuan.</p>
+          </div>
+
+          <form method="post" action="/transfer" class="space-y-5">
+
+            <div>
+              <label class="block text-sm font-semibold mb-2">Ticket ID</label>
+              <input name="id" type="number" min="0" required placeholder="Contoh: 1"
+                class="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100">
+            </div>
+
+            <div>
+              <label class="block text-sm font-semibold mb-2">Recipient Wallet</label>
+              <input name="to" required placeholder="0x..."
+                class="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100 font-mono text-sm">
+            </div>
+
+            <div class="p-4 bg-yellow-50 border border-yellow-200 rounded-xl text-sm text-yellow-700">
+              <strong>Important:</strong> Transfer hanya dapat dilakukan apabila wallet server merupakan pemilik tiket sesuai aturan backend saat ini.
+            </div>
+
+            <button type="submit"
+              class="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-semibold">
+              Transfer Ticket →
+            </button>
+
+          </form>
+        </div>
+      </section>
+
+      <!-- FOOTER -->
+      <footer class="mt-12 pt-6 border-t border-slate-200 flex flex-col sm:flex-row justify-between gap-2 text-xs text-slate-400">
+        <p>© <%= new Date().getFullYear() %> TicketNFT Dashboard</p>
+        <p>Powered by Blockchain Technology</p>
+      </footer>
+
+    </div>
+  </main>
+</div>
+
+
+<!-- TAB SCRIPT -->
+<script>
+  const tabTitles = {
+    dashboard: 'Dashboard',
+    mint: 'Mint Ticket',
+    verify: 'Verify Ticket',
+    tickets: 'Ticket List',
+    transfer: 'Transfer Ticket'
+  };
+
+  function switchTab(tab) {
+    document.querySelectorAll('.tab-content').forEach(section => {
+      section.classList.remove('active');
+    });
+
+    document.querySelectorAll('.nav-tab').forEach(button => {
+      button.classList.remove('active');
+    });
+
+    const target = document.getElementById('tab-' + tab);
+
+    if (!target) return;
+
+    target.classList.add('active');
+
+    const nav = document.querySelector(`[data-tab="${tab}"]`);
+    if (nav) nav.classList.add('active');
+
+    document.getElementById('page-title').textContent =
+      tabTitles[tab] || 'Dashboard';
+
+    history.replaceState(null, '', '#' + tab);
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const hash = window.location.hash.replace('#', '');
+
+    if (tabTitles[hash]) {
+      switchTab(hash);
+    }
+  });
+</script>
+
 </body>
 </html>
